@@ -39,28 +39,34 @@
     </main>
 
     <script>
-        // YOUR MAGIC LINK
         const SHEET_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vSjeoofiGRXQhjk9lCUAL7zx2gck_LWVTAXT6RXHMfzobV9lEpLM_wYW6Ph7ATzarFt9muEdmtEmvJP/pub?gid=0&single=true&output=csv';
 
         let allProducts = [];
 
         async function loadProducts() {
             try {
-                // ADDING A CACHE-BUSTER: This forces the browser to get the latest data every time
                 const cacheBuster = '&t=' + new Date().getTime();
                 const response = await fetch(SHEET_URL + cacheBuster);
                 const csvText = await response.text();
                 
                 const lines = csvText.split('\n').filter(line => line.trim() !== '');
-                const headers = lines[0].split(',').map(h => h.trim().toLowerCase());
+                
+                // FIX: Robust header cleaning (removes quotes and spaces)
+                const headers = lines[0].split(',').map(h => 
+                    h.trim().toLowerCase().replace(/^"|"$/g, '').trim()
+                );
                 
                 allProducts = lines.slice(1).map(line => {
                     const values = line.split(',');
                     const product = {};
                     headers.forEach((header, index) => {
-                        product[header] = values[index]?.trim() || '';
+                        let val = values[index]?.trim() || '';
+                        // Clean quotes from values too
+                        val = val.replace(/^"|"$/g, '');
+                        product[header] = val;
                     });
-                    product.price = parseFloat(product.price.replace(/[^0-9.-]+/g,"")) || 0;
+                    // Robust price parsing (removes $ or any non-number chars)
+                    product.price = parseFloat(product.price?.replace(/[^0-9.-]+/g,"")) || 0;
                     return product;
                 });
 
